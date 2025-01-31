@@ -1,10 +1,53 @@
+import logging
 from abc import ABC, abstractmethod
-from typing import List, Optional, Tuple
+from typing import Any, List, Tuple
 
-from bot.const.types import TReplyToUserText
+from bot.config import CHECK_FMS_PIPELINE_CALLING_ORDER
+from bot.const.types import TMethodName, TReplyToUserText
 from bot.enums.base import FMSStateBaseEnum
 from bot.modules.fms_state.base import BaseFMSState
 from bot.utils.handler_context import HandlerContext
+
+
+class LoggingMethodCallingOrderMixin:
+
+    def __getattribute__(self, name: str) -> Any:
+        """
+        Здесь мы проверяем корректность вызова методов, чтобы исключить потери какого-то из этапов.
+        """
+        if not CHECK_FMS_PIPELINE_CALLING_ORDER:
+            return super().__getattribute__(name)
+
+        logging.debug(f"Call of method {name}")
+        attr = super().__getattribute__(name)
+        if name not in ("init_data", "validate_data", "process_pipeline", "mark_data_as_valid", "is_data_valid"):
+            logging.debug(f"Method {name} not in list for check")
+            return attr
+
+        if name == "init_data":
+            self.call_method_list.append(TMethodName(name))
+            return attr
+
+        if name == "validate_data":
+            self.call_method_list.append(TMethodName(name))
+            if "init_data" not in self.call_method_list:
+                logging.error(f"method {name} didn't call before method init_data")
+                raise Exception(f"method {name} didn't call before method init_data")
+
+        if name == "process_pipeline":
+            self.call_method_list.append(TMethodName(name))
+            if "validate_data" not in self.call_method_list:
+                logging.error(f"method {name} didn't call before method validate_data")
+                raise Exception(f"method {name} didn't call before method validate_data")
+
+        if name == "is_data_valid":
+            self.call_method_list.append(TMethodName(name))
+            if "validate_data" not in self.call_method_list:
+                logging.error(f"method {name} didn't call before method mark_data_as_valid")
+                raise Exception(f"method {name} didn't call before method mark_data_as_valid")
+
+        logging.debug(f"Method {name} completed work.")
+        return attr
 
 
 class BaseFMSDataPipeline(ABC):
@@ -12,13 +55,13 @@ class BaseFMSDataPipeline(ABC):
     Класс-шаблон написания реализации FMS (Finite Machine State)
     """
 
-    def __init__(self, ctx: HandlerContext, fms_data: Optional[str]) -> None:
+    def __init__(self, ctx: HandlerContext) -> None:
         self._user_reply_list: List[TReplyToUserText] = []
-        # self._fms: Type[BaseFMSState] = BaseFMSState()
+        self.call_method_list: List[TMethodName] = []
 
     @property
     @abstractmethod
-    def _fms(self) -> BaseFMSState:
+    def fms(self) -> BaseFMSState:
         pass
 
     @property
@@ -48,14 +91,14 @@ class BaseFMSDataPipeline(ABC):
         Перенести статус процесс на следующий уровень
         :return:
         """
-        self._fms.next_state()
+        self.fms.next_state()
 
     @property
     def state(self) -> FMSStateBaseEnum:
         """
         Текущий статус процесса
         """
-        return self._fms.state
+        return self.fms.state
 
     async def init_data(self) -> None:
         """
@@ -86,47 +129,3 @@ class BaseFMSDataPipeline(ABC):
         Вернуть информацию статуса проверки данных
         """
         return bool(getattr(self, "_is_data_valid", False))
-
-    # def __call__(self, *args, **kwargs) -> None:
-    #     """
-    #     Здесь мы проверяем корректность вызова методов, чтобы исключить потери какого-то из этапов.
-    #     """
-    #     if not CHECK_FMS_PIPELINE_CALLING_ORDER:
-    #         return
-    #     function_name = inspect.stack()[1].function
-    #
-    #     logging.debug(f"Class {self.__class__.__name__}. Call of method {function_name}", extra=self._ctx.get_logging_extra())
-    #
-    #     if function_name == "init_data":
-    #         await self.init_data()
-    #         self.is_init_data_called = True
-    #
-    #     if function_name == "validate_data":
-    #         if not getattr(self, "is_init_data_called", False):
-    #             logging.error(f"method {function_name} didn't call before method init_data", extra=self._ctx.get_logging_extra())
-    #             raise Exception(f"method {function_name} didn't call before method init_data")
-    #
-    #         self._validate_data_in_progress = True
-    #         self.validate_data()
-    #         del self._validate_data_in_progress
-    #         self.is_validate_data_called = True
-    #
-    #     if function_name == "process_pipeline":
-    #         if not getattr(self, "is_validate_data_called", False):
-    #             logging.error(f"method {function_name} didn't call before method validate_data", extra=self._ctx.get_logging_extra())
-    #             raise Exception(f"method {function_name} didn't call before method validate_data")
-    #
-    #     # Методы работы со статусов проверки данных
-    #     if function_name == "mark_data_as_valid":
-    #         if not getattr(self, "_validate_data_in_progress", False):
-    #             logging.error(f"method {function_name} didn't call before method validate_data", extra=self._ctx.get_logging_extra())
-    #             raise Exception(f"method {function_name} didn't call before method validate_data")
-    #         self.mark_data_as_valid()
-    #         self.is_mark_data_valid_called = True
-    #
-    #     if function_name == "is_data_valid":
-    #         if not getattr(self, "is_mark_data_valid_called", False):
-    #             logging.error(f"method {function_name} didn't call before method mark_data_as_valid", extra=self._ctx.get_logging_extra())
-    #             raise Exception(f"method {function_name} didn't call before method mark_data_as_valid")
-    #
-    #     logging.debug(f"Class {self.__class__.__name__}. Method {function_name} completed work.", extra=self._ctx.get_logging_extra())

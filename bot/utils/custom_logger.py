@@ -1,3 +1,4 @@
+import io
 import json
 import logging
 import os.path
@@ -30,6 +31,26 @@ class CustomJsonFormatter(logging.Formatter):
         )
 
 
+class CustomFormatter(logging.Formatter):
+    """
+    Форматтер, который позваляет нам записывать дополнительные данные в лог.
+    """
+
+    def format(self, record: logging.LogRecord) -> str:
+        buffer = io.StringIO()
+        buffer.write(record.msg)
+        if getattr(record, "telegram_user_id", None):
+            buffer.write(f" - telegram_user_id=\"{getattr(record, 'telegram_user_id')}\"")
+        if getattr(record, "user_id", None):
+            buffer.write(f" - user_id=\"{getattr(record, 'user_id')}\"")
+        if getattr(record, "fms_name", None):
+            buffer.write(f" - fms_name=\"{getattr(record, 'fms_name')}\"")
+        if getattr(record, "fms_data", None):
+            buffer.write(f" - fms_data=\"{getattr(record, 'fms_data')}\"")
+        record.msg = buffer.getvalue()
+        return super().format(record)
+
+
 class ConsoleInfoHandlerFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         return record.levelno in (logging.INFO, logging.DEBUG, logging.DEBUG)
@@ -52,7 +73,7 @@ def setup_root_logger(level: int) -> None:
     if IS_LOG_FORMATE_AS_JSON:
         formatter: logging.Formatter = CustomJsonFormatter()
     else:
-        formatter = logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(message)s", datefmt=LOG_DATE_FORMAT)
+        formatter = CustomFormatter(fmt="%(asctime)s - %(levelname)s - %(message)s", datefmt=LOG_DATE_FORMAT)
 
     if IS_WRITE_IN_CONSOLE_MODE:
         # Обработчик для вывода debug, info, warning

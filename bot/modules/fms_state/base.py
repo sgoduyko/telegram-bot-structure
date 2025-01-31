@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from bot.const.types import TReplyToUserText
 from bot.enums.base import FMSStateBaseEnum
 
 
@@ -19,4 +20,11 @@ class BaseFMSState(ABC):
     def next_state(self) -> None:
         """
         Переключение состояния на следующее
+        """
+
+    @abstractmethod
+    def get_reply_text_for_current_state(self) -> TReplyToUserText:
+        """
+        Возвращает текст сообщения, в зависимости о состояния
+        :return: текст сообщения пользователю
         """

@@ -12,22 +12,6 @@ from bot.const.types import THandlerUploadOrderNumber
 from bot.utils.get_caller_module import get_caller_module
 
 
-# P = ParamSpec("P")
-
-
-# HandlerFuncSignatureType = Callable[[HandlerContext, Client, THandler], HandlerFuncReturnType]
-
-# HHHH = Callable[[HandlerContext, Client, THandler], Coroutine[Any, Any, HandlerFuncReturnType]]
-
-
-# @overload
-# def add_handler_with_filters(order: THandlerUploadOrderNumber, filters: Optional[Filter]) -> Callable[[Callable[[HandlerContext, Client, Message], HandlerFuncReturnType]], None]: ...
-#
-#
-# @overload
-# def add_handler_with_filters(order: THandlerUploadOrderNumber, filters: Optional[Filter]) -> Callable[[Callable[[HandlerContext, Client, CallbackQuery], HandlerFuncReturnType]], None]: ...
-
-
 def add_handler_with_filters(order: THandlerUploadOrderNumber, filters: Optional[Filter]) -> Callable[[HandlerFuncSignatureType], None]:
     """
     Декоратор, который добавляет функцию-обработчик.

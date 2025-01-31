@@ -19,7 +19,7 @@ async def message_login(ctx: HandlerContext, client: Client, message: Message) -
             [InlineKeyboardButton("Вход", callback_data="login"), InlineKeyboardButton("Регистрация", callback_data="registration/")]
         ]
     )
-    await message.reply("Какой-нибудь текст", reply_markup=markup)
+    await message.reply("Меню входа или регистрации", reply_markup=markup)
 
 
 @add_handler_with_filters(order=handlers_order.COMMAND_LOGOUT__ORDER_NUMBER, filters=filters.command("logout"))

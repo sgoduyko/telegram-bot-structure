@@ -1,9 +1,8 @@
 import dataclasses
-from typing import Optional, Callable, Any, Coroutine
+from typing import Any, Callable, Coroutine, Optional
 
 from pyrogram.filters import Filter
 
-from bot.const.special_types import FuncParams
 from bot.const.types import THandlerUploadOrderNumber
 
 
@@ -14,6 +13,6 @@ class HandlerObj:
     """
 
     handler_name: str
-    func: Callable[[FuncParams], Coroutine[Any, Any, None]]
+    func: Callable[..., Coroutine[Any, Any, None]]
     register_number: THandlerUploadOrderNumber
     filters: Optional[Filter]

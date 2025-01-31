@@ -30,6 +30,11 @@ class HandlerContext:
 
         if user:
             logging_extra.update({"user_id": int(user.id)})
+        if fms_name:
+            logging_extra.update({"fms_name": fms_name})
+        if fms_data:
+            logging_extra.update({"fms_data": fms_data})
+
         self._logging_extra: Dict[str, Union[str, int]] = logging_extra
         self.fms_name: Optional[TFMSName] = fms_name
         self.fms_data: Optional[TFMSData] = fms_data

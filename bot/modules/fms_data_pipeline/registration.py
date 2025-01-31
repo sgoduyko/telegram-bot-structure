@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
 from bot.config import (
     PINCODE_PATTERN,
@@ -13,10 +13,10 @@ from bot.const.const import (
     REGISTRATION_UNEXPECTED_LINE_ERR_TEXT,
     USERNAME_REQUIREMENTS_TEXT,
 )
-from bot.const.types import TReplyToUserText
-from bot.enums.sighin_state import SighInStateEnum
-from bot.modules.fms_data_pipeline.base import BaseFMSDataPipeline
-from bot.modules.fms_state.base import BaseFMSState
+from bot.modules.fms_data_pipeline.base import (
+    BaseFMSDataPipeline,
+    LoggingMethodCallingOrderMixin,
+)
 from bot.modules.fms_state.registration import RegistrationFMSState
 from bot.utils.expections import UnExpectedLineException
 from bot.utils.handler_context import HandlerContext
@@ -26,19 +26,16 @@ from db.functions.user.update_user import update_user_pincode
 from redis_db.client import redis_login, redis_session
 
 
-class SighInFMSDataPipeline(BaseFMSDataPipeline):
+class SighInFMSDataPipeline(BaseFMSDataPipeline, LoggingMethodCallingOrderMixin):
     """
     Процесс регистрации пользователя
     """
 
-    def __init__(self, ctx: HandlerContext, fms_data: Optional[str]) -> None:
+    def __init__(self, ctx: HandlerContext) -> None:
+        super().__init__(ctx)
         state: Optional[str] = None
         user_id: Optional[str] = None
-        if fms_data is not None:
-            state, user_id = fms_data.split(REDIS_FMS_DATA_DELIMITER)
-
-        self._user_reply_list: List[TReplyToUserText] = []
-        self.__fms: BaseFMSState = RegistrationFMSState(state)
+        self.__fms: RegistrationFMSState = RegistrationFMSState(state)
         self.__ctx: HandlerContext = ctx
         self.__ctx.expend_logging_extra({"fms_state": self.state.name})
 
@@ -50,12 +47,13 @@ class SighInFMSDataPipeline(BaseFMSDataPipeline):
             self.user_id = None
 
     @property
-    def _fms(self) -> BaseFMSState:
+    def fms(self) -> RegistrationFMSState:
         return self.__fms
 
     @property
     def _ctx(self) -> HandlerContext:
         return self.__ctx
+
     async def init_data(self) -> None:
         """
         Если нужно инициализировать какие-то данные, то это делается здесь
@@ -68,7 +66,7 @@ class SighInFMSDataPipeline(BaseFMSDataPipeline):
         if user:
             self._ctx.update_user(user)
 
-        if self.is_pincode_state() and not user:
+        if self.__fms.is_pincode_state() and not user:
             logging.warning("User not found", extra=self._ctx.get_logging_extra())
             raise Exception("Pincode stage, but user not found")
 
@@ -76,15 +74,6 @@ class SighInFMSDataPipeline(BaseFMSDataPipeline):
         return self._ctx.telegram_user_id, (
             f"{self._fms_name}{REDIS_OPERATION_DELIMITER}{self.state.value}" f"{REDIS_FMS_DATA_DELIMITER}{self.user_id or ''}"
         )
-
-    def is_not_sighin_user_state(self) -> bool:
-        return bool(self.state.value == SighInStateEnum.not_sighin_user.value)
-
-    def is_username_state(self) -> bool:
-        return bool(self.state.value == SighInStateEnum.username.value)
-
-    def is_pincode_state(self) -> bool:
-        return bool(self.state.value == SighInStateEnum.pincode.value)
 
     def validate_data(self) -> None:
         if not getattr(self, "_is_data_inited", False):
@@ -95,17 +84,17 @@ class SighInFMSDataPipeline(BaseFMSDataPipeline):
         self._is_validated = True
         self._is_data_valid = True
 
-        if self.is_not_sighin_user_state():
+        if self.__fms.is_not_sighin_user_state():
             return
 
-        if self.is_username_state():
+        if self.__fms.is_username_state():
             if not USERNAME_PATTERN.fullmatch(self._ctx.message.text):
                 self.add_user_reply(f"Никнейм не соответствует требованиям. {USERNAME_REQUIREMENTS_TEXT}")
                 logging.debug("Username is incorrect", extra=self._ctx.get_logging_extra())
                 self._is_data_valid = False
             return
 
-        if self.is_pincode_state():
+        if self.__fms.is_pincode_state():
             if not PINCODE_PATTERN.fullmatch(self._ctx.message.text):
                 self.add_user_reply(f"Пинкод не соответствует требованиям. {PINCODE_REQUIREMENTS_TEXT}")
                 logging.debug("Pincode is incorrect", extra=self._ctx.get_logging_extra())
@@ -126,14 +115,14 @@ class SighInFMSDataPipeline(BaseFMSDataPipeline):
             logging.warning("Pipeline's data didn't validate yet", extra=self._ctx.get_logging_extra())
             raise Exception("Pipeline's data didn't validate yet.")
 
-        if self.is_not_sighin_user_state():
-            self._fms.next_state()
+        if self.__fms.is_not_sighin_user_state():
+            self.fms.next_state()
             key, value = self.get_key_and_value_data()
             await redis_login.set(str(key), value)
-            self.add_user_reply("Введите логин")
+            self.add_user_reply(self.get_reply_text_for_current_state())
             return
 
-        if self.is_username_state():
+        if self.__fms.is_username_state():
             logging.debug("Creating user", extra=self._ctx.get_logging_extra())
             user = await create_user(self._ctx, self._ctx.message.text)
 
@@ -142,17 +131,17 @@ class SighInFMSDataPipeline(BaseFMSDataPipeline):
                 self.add_user_reply("Никнейм уже занят. Нужно подобрать что-то другое.")
                 return
             logging.debug("User created", extra=self._ctx.get_logging_extra())
-            self._fms.next_state()
+            self.fms.next_state()
             self._ctx.update_user(user)
             self.user_id = int(user.id) if user else None
             key, value = self.get_key_and_value_data()
             logging.debug("Save telegram user id and stage fms in redis", extra=self._ctx.get_logging_extra())
             await redis_login.set(str(key), value)
             logging.debug("Data saved in redis", extra=self._ctx.get_logging_extra())
-            self.add_user_reply(f"Введите пинкод. {PINCODE_REQUIREMENTS_TEXT}")
+            self.add_user_reply(self.get_reply_text_for_current_state())
             return
 
-        if self.is_pincode_state():
+        if self.__fms.is_pincode_state():
             logging.debug("Update pincode", extra=self._ctx.get_logging_extra())
             await update_user_pincode(self._ctx, self._ctx.user, int(self._ctx.message.text))
             logging.debug("deleting fms data from redis", extra=self._ctx.get_logging_extra())

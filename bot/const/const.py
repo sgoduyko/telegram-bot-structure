@@ -3,7 +3,7 @@ import os
 from bot.const.types import TEnvName, TFMSName, TPathToDir, TReplyToUserMessage
 
 USERNAME_REQUIREMENTS_TEXT: TReplyToUserMessage = TReplyToUserMessage(
-    """Никней должен быть от 4 до 15 символов и может состоять из:
+    """Логин должен быть от 4 до 15 символов и может состоять из:
  1) латинских символов нижнего и верхнего регистра
  2) нижнее подчеркивание"""
 )

@@ -14,7 +14,7 @@ async def message_handle_all_message(ctx: HandlerContext, client: Client, messag
     Мы обрабатываем все сообщения, которые пишет нам пользователь.
     Мы смотрим, есть ли у пользователя активная сессия или какая-то операция в процессе
     """
-    fms_pipeline = fms_pool.get_pipeline(ctx.fms_name)(ctx, ctx.fms_data)
+    fms_pipeline = fms_pool.get_pipeline(ctx.fms_name)(ctx)
 
     await fms_pipeline.init_data()
     fms_pipeline.validate_data()

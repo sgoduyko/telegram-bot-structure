@@ -1,5 +1,4 @@
-from typing import Any, Coroutine
-from typing import NewType
+from typing import Any, Coroutine, NewType
 
 THandlerUploadOrderNumber = NewType("THandlerUploadOrderNumber", int)
 
@@ -20,5 +19,6 @@ TReplyToUserText = NewType("TReplyToUserText", str)
 
 TTelegramUserId = NewType("TTelegramUserId", int)
 
+TMethodName = NewType("TMethodName", str)
 
 HandlerFuncReturnType = Coroutine[Any, Any, None]  # функция либо асинхронная, либо синхронная. Возможны оба варианта
