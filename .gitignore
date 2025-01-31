@@ -1,0 +1,9 @@
+venv
+bot_api_session.session
+bot_api_session.session-journal
+my_account.session
+.idea
+.env
+temp/
+logs/
+__pycache__/

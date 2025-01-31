@@ -1,0 +1,6 @@
+from bot.const.types import THandlerUploadOrderNumber
+
+COMMAND_LOGIN__ORDER_NUMBER: THandlerUploadOrderNumber = THandlerUploadOrderNumber(1)
+COMMAND_LOGOUT__ORDER_NUMBER: THandlerUploadOrderNumber = THandlerUploadOrderNumber(2)
+CALLBACK_REGISTRATION__ORDER_NUMBER: THandlerUploadOrderNumber = THandlerUploadOrderNumber(3)
+MESSAGE_HANDLE_ALL_MESSAGE__ORDER_NUMBER: THandlerUploadOrderNumber = THandlerUploadOrderNumber(4)

@@ -1,0 +1,69 @@
+version: '3.8'
+
+x-db-vars: &db-vars
+  POSTGRES_USER: telegram_bot
+  POSTGRES_PASSWORD: telegram_bot
+  POSTGRES_DB: telegram_bot
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+
+x-redis-vars: &redis-vars
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+
+x-bot-vars: &bot-vars
+  BOT_API: 27222151
+  BOT_HASH: 56345d0024009505999d707a9408ca8b
+  BOT_TOKEN: 7506787994:AAHpj-8fVURWIHiQHroFS41nW9mJmEMVSCw
+
+x-common-vars: &common-vars
+  ENVIRONMENT: LOCAL
+  DEBUG: 0
+
+services:
+    bot:
+        build:
+            context: .
+            dockerfile: bot/Dockerfile
+
+        container_name: telegram-bot
+        restart: unless-stopped
+        depends_on:
+            - redis
+            - postgres
+        environment:
+          <<:
+          - *db-vars
+          - *redis-vars
+          - *bot-vars
+          - *common-vars
+        volumes:
+          - ./db/migrations/versions:/telegram_bot/db/migrations/versions
+
+    redis:
+        image: "redis:6.2"
+        container_name: telegram-bot-redis
+        restart: always
+        environment:
+          <<: *common-vars
+        ports:
+            - "7480:6379"
+        command: ["redis-server", "--bind", "0.0.0.0"]
+
+    postgres:
+        image: "postgres:13"
+        container_name: telegram-bot-postgres
+        environment:
+          <<:
+          - *db-vars
+          - *common-vars
+        volumes:
+          - postgres_data:/var/lib/postgresql/data
+          - ./db/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+        ports:
+          - "6543:5432"
+        restart: always
+
+volumes:
+  postgres_data:
+    driver: local  # используем локальное хранилище по умолчанию для Docker
