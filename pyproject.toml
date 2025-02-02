@@ -35,4 +35,4 @@ exclude = "(__pycache__|venv|temp|.env|logs|db/migrations|db/env.py)"
 remove-all-unused-imports = true
 in-place = true
 recursive = true
-exclude = ["venv", "db/migrations", "temp", "logs"]
+exclude = ["venv", "db/versions", "temp", "logs", "db/models"]
