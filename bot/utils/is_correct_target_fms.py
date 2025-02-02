@@ -3,7 +3,7 @@ from typing import Optional
 from bot.const.types import TFMSName
 
 
-def is_target_fms_correct(target_fm: TFMSName, active_fms: Optional[TFMSName]) -> bool:
+def is_correct_target_fms(target_fm: TFMSName, active_fms: Optional[TFMSName]) -> bool:
     """
     Проверяет, отличается ли fms обработчика и fms, который у пользователя в процессе.
     :param target_fm: fms обработчика

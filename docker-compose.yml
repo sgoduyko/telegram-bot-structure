@@ -38,7 +38,7 @@ services:
           - *bot-vars
           - *common-vars
         volumes:
-          - ./db/migrations/versions:/telegram_bot/db/migrations/versions
+          - ./db/versions:/telegram_bot/db/versions
 
     redis:
         image: "redis:6.2"
